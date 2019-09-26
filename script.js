@@ -20,9 +20,9 @@ function init() {
 	camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
 	camera.position.y = 10;
 	scene = new THREE.Scene();
-	scene.background = new THREE.Color(0xffffff);
-	scene.fog = new THREE.Fog(0xffffff, 0, 750);
-	var light = new THREE.HemisphereLight(0xeeeeff, 0x777788, 0.75);
+	scene.background = new THREE.Color(0xFF00FF); //Baggrundsfarve
+	scene.fog = new THREE.Fog(0xFF00FF, 100, 1000); //Tåge: farve, tæt på, lang væk
+	var light = new THREE.HemisphereLight(0xeeeeff, 0x686868, 0.75);
 	light.position.set(0.5, 1, 0.75);
 	scene.add(light);
 	controls = new PointerLockControls(camera);
@@ -59,7 +59,7 @@ function init() {
 				moveRight = true;
 				break;
 			case 32: // space
-				if (canJump === true) velocity.y += 350*3;
+				if (canJump === true) velocity.y += 350*2;
 				canJump = false;
 				break;
 		}
@@ -92,7 +92,7 @@ function init() {
 
 	var request = new XMLHttpRequest();
 	var textureList = [];
-	request.open('GET', 'https://api.smk.dk/api/v1/art/search/?keys=matisse&offset=0&rows=10', true);
+	request.open('GET', 'https://api.smk.dk/api/v1/art/search/?keys=*&range=&rangeStep=%5Bproduction_dates_start%3A%7B1900-01-01T00%3A00%3A00Z%3B3000-01-01T00%3A00%3A00Z%3B%2B30YEAR%7D%5D&offset=25&rows=50', true);
 	request.onload = function () {
 
 	raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, - 1, 0), 0, 10);
@@ -108,7 +108,7 @@ function init() {
 		vertex.y += Math.random() * 2;
 		vertex.z += Math.random() * 20 - 10;*/
 		vertex.x += 0;
-		vertex.y += -10;
+		vertex.y += -100;
 		vertex.z += 0;
 		position.setXYZ(i, vertex.x, vertex.y, vertex.z);
 	}
@@ -152,6 +152,7 @@ function init() {
 		//______________________________________________________________________LOADER_________________________________________________________
 		var texture = new THREE.TextureLoader().load(textureList[3]);
 
+
 		//var floorMaterial = new THREE.MeshBasicMaterial({ vertexColors: THREE.VertexColors });
 		var floorMaterial = new THREE.MeshBasicMaterial({ map: texture });
 
@@ -167,12 +168,13 @@ function init() {
 			colors.push(color.r, color.g, color.b);
 		}
 		boxGeometry.addAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-		for (var i = 0; i < 10; i++) {
+		for (var i = 0; i < 25; i++) {
 			console.log("box");
+			var textureFromAPI = new THREE.TextureLoader().load(textureList[i]);
 			var boxMaterial = new THREE.MeshPhongMaterial({
 				specular: 0xffffff,
 				flatShading: true,
-				vertexColors: THREE.VertexColors
+				map: textureFromAPI
 			});
 			boxMaterial.color.setHSL(Math.random() * 0.2 + 0.5, 0.75, Math.random() * 0.25 + 0.75);
 			var box = new THREE.Mesh(boxGeometry, boxMaterial);
@@ -214,8 +216,8 @@ function animate() {
 		direction.z = Number(moveForward) - Number(moveBackward);
 		direction.x = Number(moveRight) - Number(moveLeft);
 		direction.normalize(); // this ensures consistent movements in all directions
-		if (moveForward || moveBackward) velocity.z -= direction.z * 400.0 * delta;
-		if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
+		if (moveForward || moveBackward) velocity.z -= direction.z * 2400.0 * delta;
+		if (moveLeft || moveRight) velocity.x -= direction.x * 2400.0 * delta;
 		if (onObject === true) {
 			velocity.y = Math.max(0, velocity.y);
 			canJump = true;
