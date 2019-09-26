@@ -1,5 +1,5 @@
-import * as THREE from './node_modules/three/build/three.module.js';
-import { PointerLockControls } from './node_modules/three/examples/jsm/controls/PointerLockControls.js';
+import * as THREE from './nm/three/build/three.module.js';
+import { PointerLockControls } from './nm/three/examples/jsm/controls/PointerLockControls.js';
 var camera, scene, renderer, controls;
 var objects = [];
 var raycaster;
