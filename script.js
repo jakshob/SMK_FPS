@@ -2,6 +2,7 @@ import * as THREE from './nm/three/build/three.module.js';
 import { PointerLockControls } from './nm/three/examples/jsm/controls/PointerLockControls.js';
 var camera, scene, renderer, controls;
 var objects = [];
+var textureList = [];
 var raycaster;
 var moveForward = false;
 var moveBackward = false;
@@ -16,15 +17,40 @@ var color = new THREE.Color();
 init();
 animate();
 function init() {
-	console.log("hej");
+
+	//Load background picture from file
+	var backgroundTex = new THREE.TextureLoader().load("textures/back.jpg");
+
+	//Camera 
 	camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
 	camera.position.y = 10;
+
+	//Scene
 	scene = new THREE.Scene();
-	scene.background = new THREE.Color(0xFF00FF); //Baggrundsfarve
-	scene.fog = new THREE.Fog(0xFF00FF, 100, 1000); //Tåge: farve, tæt på, lang væk
+	scene.background = backgroundTex; //Baggrundsfarve
+	
+	//Renderer
+	renderer = new THREE.WebGLRenderer({ antialias: true });
+
+	//Render
+
+	renderer.setPixelRatio(window.devicePixelRatio);
+	renderer.setSize(window.innerWidth, window.innerHeight);
+	document.body.appendChild(renderer.domElement);
+
+	window.addEventListener('resize', onWindowResize, false);
+	
+	//Light
 	var light = new THREE.HemisphereLight(0xeeeeff, 0x686868, 0.75);
 	light.position.set(0.5, 1, 0.75);
 	scene.add(light);
+
+	// floor
+	var floorGeometry = new THREE.PlaneBufferGeometry(20000, 20000, 100, 100);
+	floorGeometry.rotateX(- Math.PI / 2);
+
+	//Control system
+	raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, - 1, 0), 0, 10);
 	controls = new PointerLockControls(camera);
 	var blocker = document.getElementById('blocker');
 	var instructions = document.getElementById('instructions');
@@ -40,6 +66,7 @@ function init() {
 		instructions.style.display = '';
 	});
 	scene.add(controls.getObject());
+
 	var onKeyDown = function (event) {
 		switch (event.keyCode) {
 			case 38: // up
@@ -64,6 +91,7 @@ function init() {
 				break;
 		}
 	};
+
 	var onKeyUp = function (event) {
 		switch (event.keyCode) {
 			case 38: // up
@@ -89,40 +117,30 @@ function init() {
 	document.addEventListener('keydown', onKeyDown, false);
 	document.addEventListener('keyup', onKeyUp, false);
 
+	//Making a random string to make random highlight URL random.
+	function makeid(length) {
+		var result = '';
+		var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+		var charactersLength = characters.length;
+		for (var i = 0; i < length; i++) {
+			result += characters.charAt(Math.floor(Math.random() * charactersLength));
+		}
+		return result;
+	}
 
+	var random = makeid(5);
+
+
+	//HTTP Request
 	var request = new XMLHttpRequest();
-	var textureList = [];
-	request.open('GET', 'https://api.smk.dk/api/v1/art/search/?keys=*&range=&rangeStep=%5Bproduction_dates_start%3A%7B1900-01-01T00%3A00%3A00Z%3B3000-01-01T00%3A00%3A00Z%3B%2B30YEAR%7D%5D&offset=25&rows=50', true);
+
+	//This URL asks SMKs server for random highlights based on a random string. If you want to make a universe based on something else change the URL
+	request.open('GET', 'https://api.smk.dk/api/v1/art/search/?keys=*&offset=0&rows=30&randomHighlights=' + random, true);
+
+
+	//This will happen when the request gets a response from SMKs server.
 	request.onload = function () {
 
-	raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, - 1, 0), 0, 10);
-	// floor
-	var floorGeometry = new THREE.PlaneBufferGeometry(2000, 2000, 100, 100);
-	floorGeometry.rotateX(- Math.PI / 2);
-	// vertex displacement
-	var position = floorGeometry.attributes.position;
-	for (var i = 0, l = position.count; i < l; i++) {
-		vertex.fromBufferAttribute(position, i);
-		/*
-		vertex.x += Math.random() * 20 - 10;
-		vertex.y += Math.random() * 2;
-		vertex.z += Math.random() * 20 - 10;*/
-		vertex.x += 0;
-		vertex.y += -100;
-		vertex.z += 0;
-		position.setXYZ(i, vertex.x, vertex.y, vertex.z);
-	}
-	floorGeometry = floorGeometry.toNonIndexed(); // ensure each face has unique vertices
-	position = floorGeometry.attributes.position;
-	var colors = [];
-	for (var i = 0, l = position.count; i < l; i++) {
-		color.setHSL(Math.random() * 0.3 + 0.5, 0.75, Math.random() * 0.25 + 0.75);
-		colors.push(color.r, color.g, color.b);
-	}
-	floorGeometry.addAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-
-	//_________________________________________________________________________________IMPORTANT FOR MATERIAL:________________________________________________________________________
-	
 
 		// Begin accessing JSON data here
 
@@ -130,77 +148,73 @@ function init() {
 		if (request.status >= 200 && request.status < 400) {
 
 			data.items.forEach(image => {
-				if (image.image_native === undefined) {
-					console.log("nej");
+				if (image.image_thumbnail !== undefined) {
+					
+					textureList.push(image.image_thumbnail);
 
-
-				} else {
-					textureList.push(image.image_native);
-					console.log("ja");
 				}
 
 
 			});
+
 		} else {
 			const errorMessage = document.createElement('marquee');
-			errorMessage.textContent = `Gah, it's not working!`;
+			errorMessage.textContent = `HTTP-request failure`;
 			app.appendChild(errorMessage);
 		}
 
-		console.log(textureList)
+	
 
-		//______________________________________________________________________LOADER_________________________________________________________
+		//Load texture to floor
 		var texture = new THREE.TextureLoader().load(textureList[3]);
 
-
-		//var floorMaterial = new THREE.MeshBasicMaterial({ vertexColors: THREE.VertexColors });
+		//Map floor material to the texture just loaded
 		var floorMaterial = new THREE.MeshBasicMaterial({ map: texture });
 
+		//Create floor from material and geometry
 		var floor = new THREE.Mesh(floorGeometry, floorMaterial);
+
+		//Add floor to scene
 		scene.add(floor);
-		// objects
-		var boxGeometry = new THREE.BoxBufferGeometry(20, 20, 20);
-		boxGeometry = boxGeometry.toNonIndexed(); // ensure each face has unique vertices
-		position = boxGeometry.attributes.position;
-		colors = [];
-		for (var i = 0, l = position.count; i < l; i++) {
-			color.setHSL(Math.random() * 0.3 + 0.5, 0.75, Math.random() * 0.25 + 0.75);
-			colors.push(color.r, color.g, color.b);
-		}
-		boxGeometry.addAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-		for (var i = 0; i < 25; i++) {
-			console.log("box");
+
+		//Geometry for the images 
+		var boxGeometry = new THREE.BoxBufferGeometry(40, 40, 0.1);
+
+		//Looping through the textureList to make the image objects. They all share the same geometry at the moment.
+		for (var i = 0; i < textureList.length; i++) {
+ 
 			var textureFromAPI = new THREE.TextureLoader().load(textureList[i]);
 			var boxMaterial = new THREE.MeshPhongMaterial({
 				specular: 0xffffff,
 				flatShading: true,
 				map: textureFromAPI
 			});
-			boxMaterial.color.setHSL(Math.random() * 0.2 + 0.5, 0.75, Math.random() * 0.25 + 0.75);
+		
 			var box = new THREE.Mesh(boxGeometry, boxMaterial);
-			box.position.x = Math.floor(Math.random() * 20 - 10) * 20;
-			box.position.y = Math.floor(Math.random() * 20) * 20 + 10;
-			box.position.z = Math.floor(Math.random() * 20 - 10) * 20;
+
+			//Position the box based on the location in array, feel free to make a more fun positioning
+			box.position.x = i * 10;
+			box.position.y = 30;
+			box.position.z = i * 30;
 			scene.add(box);
 			objects.push(box);
 		}
-		//
-		renderer = new THREE.WebGLRenderer({ antialias: true });
-		renderer.setPixelRatio(window.devicePixelRatio);
-		renderer.setSize(window.innerWidth, window.innerHeight);
-		document.body.appendChild(renderer.domElement);
-		//
-		window.addEventListener('resize', onWindowResize, false);
+		
 	}
+
+	//Send request, when the request gets the response, everything in the onload function will happen
 	request.send();
 }
 
+
+//Function that makes the page responsive
 function onWindowResize() {
 	camera.aspect = window.innerWidth / window.innerHeight;
 	camera.updateProjectionMatrix();
 	renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
+//This is where the animation happens.
 function animate() {
 	requestAnimationFrame(animate);
 	if (controls.isLocked === true) {
